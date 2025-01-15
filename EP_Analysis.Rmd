@@ -1,5 +1,5 @@
 ---
-title: "Employee Productivity Analysis"
+title: "Employee Turnover Analysis"
 output: html_document
 date: "2024-11-21"
 ---
@@ -15,25 +15,154 @@ This is an R Markdown document. Markdown is a simple formatting syntax for autho
 When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
 ```{r}
+library(ggplot2)
+library(pheatmap)
+library(reshape2)
+
 setwd("/Users/betuldemir/DTSC3010/")
-emp_data <- read.csv('~/DTSC3010/hr_dashboard_data.csv')
-head(emp_data)
+turnoverData <- read.csv('~/DTSC3010/turnover.csv')
+head(turnoverData)
 ```
 
 
 ```{r}
-summary(emp_data)
+summary(turnoverData)
 ```
+## Visualization Plots
+
+## Bar Chart: Count of Employee Resignition
 ```{r}
+ggplot(turnoverData, aes(x = factor(event))) +
+  geom_bar(fill = "steelblue") +
+  labs(x = "Event (1 = Quit, 0 = Stayed)", y = "Count") +
+  theme_minimal()
+```
+
+## Histogram: Employee's Duration w/ Company
+```{r}
+# Example: Visualize a categorical variable
+ggplot(turnoverData, aes(x = stag)) +
+  geom_histogram(binwidth = 5, fill = "lightblue", color = "black") +
+  labs(x = "Stag (monthly)", y = "Frequency") +
+  theme_minimal()
+```
+
+## Bar Chart: Count of Intermission Instances
+```{r}
+# Example: Visualize a categorical variable
+ggplot(turnoverData, aes(x = coach)) + geom_bar() + theme_minimal()
+  
+```
+
+## Stacked Bar Plot: Proportion of Resignitions by Profession
+```{r}
+ggplot(turnoverData, aes(x = profession, fill = factor(event))) +
+  geom_bar(position = "fill") +
+  labs(
+    title = "Proportion of Events by Profession",
+    x = "Industry",
+    y = "Proportion",
+    fill = "Event (1 = Quit, 0 = Stayed)"
+  ) +
+  scale_y_continuous(labels = scales::percent) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+## Stacked Bar Plot: Proportion of Intermissions by Profession
+```{r}
+ggplot(turnoverData, aes(x = profession, fill = factor(coach))) +
+  geom_bar(position = "fill") +
+  labs(
+    title = "Proportion of Intermission by Profession",
+    x = "Industry",
+    y = "Proportion",
+    fill = "Intermission"
+  ) +
+  scale_y_continuous(labels = scales::percent) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 ```
 
-## Including Plots
+## Heatmap: Correlation Matrix of Numeric Values
+```{r}
+numeric_data <- turnoverData[, sapply(turnoverData, is.numeric)]  
 
-You can also embed plots, for example:
+cor_matrix <- cor(numeric_data, use = "complete.obs") 
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+pheatmap(cor_matrix, 
+         clustering_distance_rows = "euclidean", # or "manhattan"
+         clustering_distance_cols = "euclidean", 
+         clustering_method = "complete",
+         display_numbers = TRUE,
+         color = colorRampPalette(c("red", "yellow", "green"))(100), 
+         main = "Correlation Heatmap")
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## Statistical Tests
+
+## Pearson's Chi-Square Test: Resignition vs. Mode of Commute 
+```{r}
+table_commute_event <- table(turnoverData$event, turnoverData$way)
+chisq.test(table_commute_event)
+```
+
+## Pearson's Chi-Square Test: Resignition vs. Mode of Commute 
+```{r}
+table_way_event <- table(turnoverData$event, turnoverData$way)
+chisq.test(table_way_event)
+```
+
+
+```{r}
+table_coach_event <- table(turnoverData$event, turnoverData$coach)
+chisq.test(table_coach_event)
+```
+
+
+## Logistic Regression Test
+```{r}
+# 1. Perform logistic regression for each column individually
+significance_results <- lapply(names(turnoverData), function(col) {
+  if (col != "event") { # Skip the target column
+    model <- glm(event ~ ., data = turnoverData[, c("event", col)], family = "binomial")
+    p_value <- summary(model)$coefficients[2, 4] # Extract p-value for the predictor
+    return(data.frame(Feature = col, P_Value = p_value))
+  }
+})
+# Combine results
+significance_results <- do.call(rbind, significance_results)
+
+# 2. Sort results by p-value
+significance_results <- significance_results[order(significance_results$P_Value), ]
+print(significance_results)
+
+```
+
+## Pearson's T-Test: 
+```{r}
+# Pearson Correlation (for normally distributed variables)
+cor.test(turnoverData$age, turnoverData$stag, method = "pearson")
+
+# Spearman Correlation (for non-normally distributed variables)
+cor.test(turnoverData$event, turnoverData$anxiety, method = "pearson")
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
